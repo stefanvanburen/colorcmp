@@ -56,7 +56,34 @@ func TestReporter(t *testing.T) {
 	t.Log("\n" + out)
 }
 
-func TestReporterEqual(t *testing.T) {
+// Server has an Equal method, so go-cmp treats it as an opaque leaf rather
+// than traversing its fields. This triggers the multi-line JSON formatting
+// path in colorcmp, producing a structured diff of the whole value.
+type Server struct {
+	Host    string
+	Port    int
+	Timeout int
+	Debug   bool
+}
+
+func (s Server) Equal(other Server) bool { return s == other }
+
+func TestReporterLeafDiff(t *testing.T) {
+	x := Server{Host: "localhost", Port: 8080, Timeout: 30, Debug: true}
+	y := Server{Host: "remotehost", Port: 9090, Timeout: 60, Debug: false}
+
+	var r colorcmp.Reporter
+	if cmp.Equal(x, y, cmp.Reporter(&r)) {
+		t.Fatal("expected not equal")
+	}
+	out := r.String()
+	if out == "" {
+		t.Fatal("expected non-empty diff output")
+	}
+	t.Log("\n" + out)
+}
+
+func TestEqual(t *testing.T) {
 	x := "hello"
 	y := "hello"
 
