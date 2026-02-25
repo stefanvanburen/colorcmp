@@ -33,8 +33,8 @@ type Reporter struct {
 	colors bool
 }
 
-// New returns a Reporter that uses ANSI colors if w is connected to a terminal and the NO_COLOR
-// environment variable is not set.
+// New returns a Reporter that uses ANSI colors if w is connected to a terminal.
+// It respects the NO_COLOR and FORCE_COLOR environment variables.
 func New(w io.Writer) *Reporter {
 	return &Reporter{colors: isTTY(w)}
 }

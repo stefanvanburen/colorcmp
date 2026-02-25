@@ -13,10 +13,28 @@ go get github.com/stefanvanburen/colorcmp
 ## Usage
 
 ```go
-var r colorcmp.Reporter
-cmp.Equal(x, y, cmp.Reporter(&r))
+r := colorcmp.New(os.Stdout)
+cmp.Equal(x, y, cmp.Reporter(r))
 fmt.Print(r.String())
 ```
+
+In tests, pass `t.Output()` so color detection follows the test output stream:
+
+```go
+r := colorcmp.New(t.Output())
+if !cmp.Equal(x, y, cmp.Reporter(r)) {
+    t.Errorf("mismatch:\n%s", r.String())
+}
+```
+
+The zero value `var r colorcmp.Reporter` is also valid and produces output without ANSI color codes.
+
+## Environment variables
+
+| Variable | Effect |
+|---|---|
+| [`NO_COLOR`](https://no-color.org) | Disables color output |
+| [`FORCE_COLOR`](https://force-color.org) | Forces color output |
 
 ## Note
 
