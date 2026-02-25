@@ -1,6 +1,7 @@
 package colorcmp_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -45,8 +46,8 @@ func TestReporter(t *testing.T) {
 		Hobbies: []string{"reading", "cycling", "cooking"},
 	}
 
-	var r colorcmp.Reporter
-	if cmp.Equal(x, y, cmp.Reporter(&r)) {
+	r := colorcmp.New(t.Output())
+	if cmp.Equal(x, y, cmp.Reporter(r)) {
 		t.Fatal("expected not equal")
 	}
 	out := r.String()
@@ -72,8 +73,8 @@ func TestReporterLeafDiff(t *testing.T) {
 	x := Server{Host: "localhost", Port: 8080, Timeout: 30, Debug: true}
 	y := Server{Host: "remotehost", Port: 9090, Timeout: 60, Debug: false}
 
-	var r colorcmp.Reporter
-	if cmp.Equal(x, y, cmp.Reporter(&r)) {
+	r := colorcmp.New(t.Output())
+	if cmp.Equal(x, y, cmp.Reporter(r)) {
 		t.Fatal("expected not equal")
 	}
 	out := r.String()
@@ -94,4 +95,18 @@ func TestEqual(t *testing.T) {
 	if r.String() != "" {
 		t.Fatalf("expected empty diff, got: %s", r.String())
 	}
+}
+
+func ExampleReporter() {
+	type Point struct {
+		X, Y int
+	}
+	x := Point{X: 1, Y: 2}
+	y := Point{X: 1, Y: 3}
+
+	var r colorcmp.Reporter
+	cmp.Equal(x, y, cmp.Reporter(&r))
+	fmt.Print(r.String())
+	// Output:
+	// Y: -2 +3
 }

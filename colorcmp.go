@@ -5,10 +5,13 @@ package colorcmp
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"reflect"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	"golang.org/x/term"
 	"znkr.io/diff"
 )
 
@@ -16,14 +19,43 @@ import (
 // values are shown inline; multi-line values (e.g. structs formatted as JSON) use a line-by-line
 // block diff via [znkr.io/diff].
 //
+// The zero value is valid and produces output without ANSI color codes, suitable for non-terminal
+// output. Use [New] to create a Reporter that auto-detects terminal support.
+//
 // Example:
 //
-//	var r colorcmp.Reporter
-//	cmp.Equal(x, y, cmp.Reporter(&r))
+//	r := colorcmp.New(os.Stdout)
+//	cmp.Equal(x, y, cmp.Reporter(r))
 //	fmt.Print(r.String())
 type Reporter struct {
-	path  cmp.Path
-	diffs []string
+	path   cmp.Path
+	diffs  []string
+	colors bool
+}
+
+// New returns a Reporter that uses ANSI colors if w is connected to a terminal and the NO_COLOR
+// environment variable is not set.
+func New(w io.Writer) *Reporter {
+	return &Reporter{colors: isTTY(w)}
+}
+
+func isTTY(w io.Writer) bool {
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	type fdGetter interface {
+		Fd() uintptr
+	}
+	if fd, ok := w.(fdGetter); ok {
+		return term.IsTerminal(int(fd.Fd()))
+	}
+	// Fall back to the TERM environment variable when the writer doesn't expose
+	// a file descriptor (e.g. testing.T.Output). go test pipes all fds of the
+	// test binary, so fd-based detection always returns false inside tests.
+	// TERM is inherited from the shell and reflects the actual terminal, while
+	// CI environments typically leave it unset.
+	t := os.Getenv("TERM")
+	return t != "" && t != "dumb"
 }
 
 func (r *Reporter) PushStep(ps cmp.PathStep) {
@@ -37,11 +69,21 @@ func (r *Reporter) Report(rs cmp.Result) {
 		y := formatValue(vy)
 		xs := strings.TrimSuffix(x, "\n")
 		ys := strings.TrimSuffix(y, "\n")
+
+		path := r.path.String()
+		if path == "" {
+			path = fmt.Sprintf("{%v}", vx.Type())
+		}
+
 		var entry string
 		if !strings.Contains(xs, "\n") && !strings.Contains(ys, "\n") {
-			entry = fmt.Sprintf("%v: \033[31m-%s\033[m \033[32m+%s\033[m\n", r.path, xs, ys)
+			if r.colors {
+				entry = fmt.Sprintf("%s: \033[31m-%s\033[m \033[32m+%s\033[m\n", path, xs, ys)
+			} else {
+				entry = fmt.Sprintf("%s: -%s +%s\n", path, xs, ys)
+			}
 		} else {
-			entry = fmt.Sprintf("%v:\n%s", r.path, colorDiff(x, y))
+			entry = fmt.Sprintf("%s:\n%s", path, renderDiff(x, y, r.colors))
 		}
 		r.diffs = append(r.diffs, entry)
 	}
@@ -51,24 +93,38 @@ func (r *Reporter) PopStep() {
 	r.path = r.path[:len(r.path)-1]
 }
 
-// String returns the accumulated colored diff output.
+// String returns the accumulated diff output.
 func (r *Reporter) String() string {
 	return strings.Join(r.diffs, "")
 }
 
-// colorDiff returns a colored line-by-line diff of x and y.
-func colorDiff(x, y string) string {
+// renderDiff returns a line-by-line diff of x and y, using ANSI colors if enabled.
+// It uses [diff.Hunks] to show only changed lines with surrounding context.
+func renderDiff(x, y string, colors bool) string {
 	xlines := strings.Split(strings.TrimSuffix(x, "\n"), "\n")
 	ylines := strings.Split(strings.TrimSuffix(y, "\n"), "\n")
 	var sb strings.Builder
-	for _, edit := range diff.Edits(xlines, ylines) {
-		switch edit.Op {
-		case diff.Delete:
-			fmt.Fprintf(&sb, "\033[31m-%s\033[m\n", edit.X)
-		case diff.Insert:
-			fmt.Fprintf(&sb, "\033[32m+%s\033[m\n", edit.Y)
-		case diff.Match:
-			fmt.Fprintf(&sb, " %s\n", edit.X)
+	for i, hunk := range diff.Hunks(xlines, ylines) {
+		if i > 0 {
+			sb.WriteString("...\n")
+		}
+		for _, edit := range hunk.Edits {
+			switch edit.Op {
+			case diff.Delete:
+				if colors {
+					fmt.Fprintf(&sb, "\033[31m-%s\033[m\n", edit.X)
+				} else {
+					fmt.Fprintf(&sb, "-%s\n", edit.X)
+				}
+			case diff.Insert:
+				if colors {
+					fmt.Fprintf(&sb, "\033[32m+%s\033[m\n", edit.Y)
+				} else {
+					fmt.Fprintf(&sb, "+%s\n", edit.Y)
+				}
+			case diff.Match:
+				fmt.Fprintf(&sb, " %s\n", edit.X)
+			}
 		}
 	}
 	return sb.String()
