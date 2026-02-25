@@ -40,8 +40,11 @@ func New(w io.Writer) *Reporter {
 }
 
 func isTTY(w io.Writer) bool {
-	if os.Getenv("NO_COLOR") != "" {
+	if os.Getenv("NO_COLOR") != "" { // https://no-color.org
 		return false
+	}
+	if os.Getenv("FORCE_COLOR") != "" { // https://force-color.org
+		return true
 	}
 	type fdGetter interface {
 		Fd() uintptr
