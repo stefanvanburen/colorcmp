@@ -2,8 +2,8 @@ Output .github/demo.gif
 
 Set FontSize 14
 Set FontFamily "PragmataPro Mono Liga"
-Set Width 1000
-Set Height 1000
+Set Width 600
+Set Height 600
 Set Theme "rose-pine-moon"
 Set WindowBar Colorful
 Set CursorBlink false
