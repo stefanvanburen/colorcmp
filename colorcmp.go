@@ -1,5 +1,5 @@
-// Package colorcmp provides a cmp.Reporter that uses ANSI color diffing to
-// display differences between compared values.
+// Package colorcmp provides a [cmp.Reporter] that displays differences between compared values
+// using ANSI terminal colors.
 package colorcmp
 
 import (
@@ -12,11 +12,11 @@ import (
 	"znkr.io/diff"
 )
 
-// Reporter is a [cmp.Reporter] that prints colored diffs using ANSI terminal
-// colors. It is similar to the DiffReporter example in the go-cmp package but
-// uses znkr.io/diff's textdiff for colorized unified diff output.
+// Reporter is a [cmp.Reporter] that displays colored diffs using ANSI terminal colors. Single-line
+// values are shown inline; multi-line values (e.g. structs formatted as JSON) use a line-by-line
+// block diff via [znkr.io/diff].
 //
-// Usage:
+// Example:
 //
 //	var r colorcmp.Reporter
 //	cmp.Equal(x, y, cmp.Reporter(&r))
@@ -74,10 +74,10 @@ func colorDiff(x, y string) string {
 	return sb.String()
 }
 
-// formatValue formats a reflect.Value for diffing. It uses json.MarshalIndent
-// to produce multi-line output for complex types (structs, slices, maps),
-// which gives textdiff something meaningful to work with. Falls back to %#v
-// for types that cannot be JSON-marshaled (e.g. channels, functions).
+// formatValue formats a reflect.Value as a string for diffing. It uses [json.MarshalIndent] for
+// complex types (structs, slices, maps) to produce multi-line output that diffs well
+// line-by-line. It falls back to %#v for types that cannot be JSON-marshaled (e.g. channels,
+// functions).
 func formatValue(v reflect.Value) string {
 	if !v.IsValid() {
 		return "<invalid>\n"
