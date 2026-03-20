@@ -1,7 +1,7 @@
 Output .github/demo.gif
 
 Set FontSize 14
-Set FontFamily "PragmataPro Mono Liga"
+Set FontFamily "JetBrains Mono"
 Set Width 600
 Set Height 600
 Set Theme "rose-pine-moon"
