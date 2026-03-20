@@ -1,9 +1,11 @@
 Output .github/demo.gif
 
-Set FontSize 14
-Set FontFamily "JetBrains Mono"
-Set Width 600
-Set Height 600
+Set FontSize 12
+Set Padding 4
+# Note: the font must be installed locally.
+Set FontFamily "Berkeley Mono Variable"
+Set Width 500
+Set Height 500
 Set Theme "rose-pine-moon"
 Set WindowBar Colorful
 Set CursorBlink false
@@ -16,4 +18,4 @@ Enter
 Sleep 3s
 
 # Display the output.
-Sleep 10s
+Sleep 5s

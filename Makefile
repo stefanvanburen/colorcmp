@@ -13,8 +13,10 @@ lint:
 check: lint test
 
 # Recreate the demo gif.
-# To regenerate and view:
-# make demo; and open .github/demo.gif -a Safari.app
 demo: .github/demo.gif
 .github/demo.gif: .github/demo.tape $(wildcard *.go)
 	vhs .github/demo.tape
+
+# Recreate the demo gif and open it in Safari.
+open-demo: demo
+	open .github/demo.gif -a Safari.app
