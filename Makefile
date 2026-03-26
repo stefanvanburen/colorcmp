@@ -14,9 +14,9 @@ check: lint test
 
 # Recreate the demo gifs.
 demo: .github/demo-light.gif .github/demo-dark.gif
-.github/demo-light.gif: .github/demo-light.tape $(wildcard *.go)
+.github/demo-light.gif: .github/demo-light.tape .github/demo-base.tape $(wildcard *.go)
 	vhs .github/demo-light.tape
-.github/demo-dark.gif: .github/demo-dark.tape $(wildcard *.go)
+.github/demo-dark.gif: .github/demo-dark.tape .github/demo-base.tape $(wildcard *.go)
 	vhs .github/demo-dark.tape
 
 # Recreate the demo gifs and open them in Safari.

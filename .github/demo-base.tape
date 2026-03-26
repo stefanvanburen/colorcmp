@@ -1,10 +1,9 @@
-Set FontSize 12
+Set FontSize 24
 Set Padding 4
 # Note: the font must be installed locally.
-Set FontFamily "Berkeley Mono Variable"
-Set Width 500
-Set Height 500
-Set WindowBar Colorful
+Set FontFamily "Go Mono"
+Set Width 1000
+Set Height 900
 Set CursorBlink false
 Set TypingSpeed 75ms
 
