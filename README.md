@@ -2,7 +2,11 @@
 
 A [`cmp.Reporter`](https://pkg.go.dev/github.com/google/go-cmp/cmp#Reporter) that uses [`znkr.io/diff`](https://pkg.go.dev/znkr.io/diff) to display differences between compared values with ANSI terminal colors.
 
-![demo](.github/demo.gif)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/demo-dark.gif">
+  <source media="(prefers-color-scheme: light)" srcset=".github/demo-light.gif">
+  <img alt="demo" src=".github/demo-light.gif">
+</picture>
 
 ## Installation
 
