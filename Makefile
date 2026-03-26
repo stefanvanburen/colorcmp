@@ -12,11 +12,14 @@ lint:
 # Run lint and test.
 check: lint test
 
-# Recreate the demo gif.
-demo: .github/demo.gif
-.github/demo.gif: .github/demo.tape $(wildcard *.go)
-	vhs .github/demo.tape
+# Recreate the demo gifs.
+demo: .github/demo-light.gif .github/demo-dark.gif
+.github/demo-light.gif: .github/demo-light.tape $(wildcard *.go)
+	vhs .github/demo-light.tape
+.github/demo-dark.gif: .github/demo-dark.tape $(wildcard *.go)
+	vhs .github/demo-dark.tape
 
-# Recreate the demo gif and open it in Safari.
+# Recreate the demo gifs and open them in Safari.
 open-demo: demo
-	open .github/demo.gif -a Safari.app
+	open .github/demo-light.gif -a Safari.app
+	open .github/demo-dark.gif -a Safari.app
