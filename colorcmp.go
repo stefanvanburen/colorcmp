@@ -195,6 +195,14 @@ func formatValue(v reflect.Value) string {
 	if !v.IsValid() {
 		return "<invalid>\n"
 	}
+	// Multi-line strings diff far better line-by-line than as a single quoted,
+	// escaped blob, so render them raw and let the block diff handle them. A
+	// lone trailing newline doesn't make a string multi-line.
+	if v.Kind() == reflect.String {
+		if s := v.String(); strings.Contains(strings.TrimSuffix(s, "\n"), "\n") {
+			return s
+		}
+	}
 	if v.CanInterface() {
 		var b strings.Builder
 		enc := json.NewEncoder(&b)

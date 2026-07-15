@@ -83,6 +83,25 @@ func TestReporterOutput(t *testing.T) {
 			want: `{string}: -"<b>a</b>" +"<b>c</b>"` + "\n",
 		},
 		{
+			name: "multi-line string diffs line-by-line",
+			x:    "line one\nline two\nline three\n",
+			y:    "line one\nline TWO\nline three\n",
+			want: lines(
+				"{string}:",
+				" line one",
+				"-line two",
+				"+line TWO",
+				" line three",
+			),
+		},
+		{
+			// A lone trailing newline is not multi-line; keep it quoted so the
+			// escape stays visible.
+			name: "trailing newline stays quoted",
+			x:    "abc\n", y: "abd\n",
+			want: "{string}: -\"abc\\n\" +\"abd\\n\"\n",
+		},
+		{
 			name: "struct field",
 			x:    Address{City: "New York"}, y: Address{City: "Boston"},
 			want: `City: -"New York" +"Boston"` + "\n",
