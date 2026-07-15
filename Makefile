@@ -12,12 +12,18 @@ lint:
 # Run lint and test.
 check: lint test
 
-# Recreate the demo gifs.
-demo: .github/demo-light.gif .github/demo-dark.gif
-.github/demo-light.gif: .github/demo-light.tape .github/demo-base.tape $(wildcard *.go)
-	vhs .github/demo-light.tape
-.github/demo-dark.gif: .github/demo-dark.tape .github/demo-base.tape $(wildcard *.go)
-	vhs .github/demo-dark.tape
+# agg (https://github.com/asciinema/agg) renders an asciinema recording to a gif.
+AGG = agg --font-family "Go Mono" --font-size 24
+
+# Recreate the demo gifs by rendering the recorded session (see .github/demo.sh)
+# with each theme.
+demo: .github/demo.cast
+	$(AGG) --theme github-light .github/demo.cast .github/demo-light.gif
+	$(AGG) --theme github-dark .github/demo.cast .github/demo-dark.gif
+
+# Record the terminal session that the demo gifs are rendered from.
+.github/demo.cast: .github/demo.sh $(wildcard *.go)
+	asciinema rec --headless --overwrite --window-size 58x16 -c "sh .github/demo.sh" $@
 
 # Recreate the demo gifs and open them in Safari.
 open-demo: demo
