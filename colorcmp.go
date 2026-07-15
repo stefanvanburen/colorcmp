@@ -186,18 +186,22 @@ func renderDiff(x, y string, colors bool) string {
 	return sb.String()
 }
 
-// formatValue formats a reflect.Value as a string for diffing. It uses [json.MarshalIndent] for
-// complex types (structs, slices, maps) to produce multi-line output that diffs well
-// line-by-line. It falls back to %#v for types that cannot be JSON-marshaled (e.g. channels,
+// formatValue formats a reflect.Value as a string for diffing. It encodes values as JSON so that
+// complex types (structs, slices, maps) produce multi-line output that diffs well line-by-line.
+// HTML escaping is disabled so that characters like <, >, and & appear literally rather than as
+// \u00xx escapes. It falls back to %#v for types that cannot be JSON-encoded (e.g. channels,
 // functions).
 func formatValue(v reflect.Value) string {
 	if !v.IsValid() {
 		return "<invalid>\n"
 	}
 	if v.CanInterface() {
-		b, err := json.MarshalIndent(v.Interface(), "", "\t")
-		if err == nil {
-			return string(b) + "\n"
+		var b strings.Builder
+		enc := json.NewEncoder(&b)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "\t")
+		if err := enc.Encode(v.Interface()); err == nil {
+			return b.String() // Encode already appends a trailing newline.
 		}
 	}
 	return fmt.Sprintf("%#v\n", v)

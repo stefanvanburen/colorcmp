@@ -76,6 +76,13 @@ func TestReporterOutput(t *testing.T) {
 			want: "{*int}: -null +0\n",
 		},
 		{
+			// Strings are quoted (to disambiguate whitespace and string vs.
+			// number) but must not be HTML-escaped: <, >, and & stay literal.
+			name: "html in string is not escaped",
+			x:    "<b>a</b>", y: "<b>c</b>",
+			want: `{string}: -"<b>a</b>" +"<b>c</b>"` + "\n",
+		},
+		{
 			name: "struct field",
 			x:    Address{City: "New York"}, y: Address{City: "Boston"},
 			want: `City: -"New York" +"Boston"` + "\n",
