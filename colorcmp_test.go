@@ -248,6 +248,36 @@ func TestReporterColors(t *testing.T) {
 	}
 }
 
+// TestReporterDemo drives the demo GIFs (see .github/demo-base.tape). It logs a
+// realistic colored diff so the recording shows indexed paths and a multi-line
+// block diff. Using t.Output means color follows the recording terminal.
+func TestReporterDemo(t *testing.T) {
+	type Deployment struct {
+		Name     string
+		Replicas int
+		Tags     []string
+		Script   string
+	}
+	x := Deployment{
+		Name:     "web",
+		Replicas: 2,
+		Tags:     []string{"prod", "east"},
+		Script:   "#!/bin/sh\necho hello\nexit 0\n",
+	}
+	y := Deployment{
+		Name:     "web",
+		Replicas: 3,
+		Tags:     []string{"prod", "west"},
+		Script:   "#!/bin/sh\necho world\nexit 0\n",
+	}
+
+	r := colorcmp.New(t.Output())
+	if cmp.Equal(x, y, cmp.Reporter(r)) {
+		t.Fatal("expected not equal")
+	}
+	t.Log("\n" + r.String())
+}
+
 func TestEqual(t *testing.T) {
 	x := "hello"
 	y := "hello"
