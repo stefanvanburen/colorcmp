@@ -66,29 +66,55 @@ func (r *Reporter) PushStep(ps cmp.PathStep) {
 }
 
 func (r *Reporter) Report(rs cmp.Result) {
-	if !rs.Equal() {
-		vx, vy := r.path.Last().Values()
+	if rs.Equal() {
+		return
+	}
+	vx, vy := r.path.Last().Values()
+	path := r.pathString(vx, vy)
+
+	var entry string
+	switch {
+	case !vx.IsValid():
+		// Value present only in y: render as a pure insertion.
+		entry = renderOneSided(path, formatValue(vy), true, r.colors)
+	case !vy.IsValid():
+		// Value present only in x: render as a pure deletion.
+		entry = renderOneSided(path, formatValue(vx), false, r.colors)
+	default:
 		x := formatValue(vx)
 		y := formatValue(vy)
 		xs := strings.TrimSuffix(x, "\n")
 		ys := strings.TrimSuffix(y, "\n")
-
-		path := r.path.String()
-		if path == "" {
-			path = fmt.Sprintf("{%v}", vx.Type())
-		}
-
-		var entry string
 		if !strings.Contains(xs, "\n") && !strings.Contains(ys, "\n") {
-			if r.colors {
-				entry = fmt.Sprintf("%s: \033[31m-%s\033[m \033[32m+%s\033[m\n", path, xs, ys)
-			} else {
-				entry = fmt.Sprintf("%s: -%s +%s\n", path, xs, ys)
-			}
+			entry = fmt.Sprintf("%s: %s %s\n", path, colorize("-"+xs, colorDelete, r.colors), colorize("+"+ys, colorInsert, r.colors))
 		} else {
 			entry = fmt.Sprintf("%s:\n%s", path, renderDiff(x, y, r.colors))
 		}
-		r.diffs = append(r.diffs, entry)
+	}
+	r.diffs = append(r.diffs, entry)
+}
+
+// pathString returns a human-readable path to the current node. Unlike
+// [cmp.Path.String], which keeps only struct field names, it includes slice
+// indices and map keys so the location of a diff is unambiguous. It falls back
+// to the node's type when the node is the root of the comparison.
+func (r *Reporter) pathString(vx, vy reflect.Value) string {
+	var sb strings.Builder
+	if len(r.path) > 0 {
+		for _, step := range r.path[1:] { // skip the root step, which carries only the type
+			sb.WriteString(step.String())
+		}
+	}
+	if path := strings.TrimPrefix(sb.String(), "."); path != "" {
+		return path
+	}
+	switch {
+	case vx.IsValid():
+		return fmt.Sprintf("{%v}", vx.Type())
+	case vy.IsValid():
+		return fmt.Sprintf("{%v}", vy.Type())
+	default:
+		return "{}"
 	}
 }
 
@@ -99,6 +125,41 @@ func (r *Reporter) PopStep() {
 // String returns the accumulated diff output.
 func (r *Reporter) String() string {
 	return strings.Join(r.diffs, "")
+}
+
+// ANSI SGR color codes for deletions (red) and insertions (green).
+const (
+	colorDelete = 31
+	colorInsert = 32
+)
+
+// colorize wraps s in the given ANSI color code when colors is true, and
+// returns s unchanged otherwise.
+func colorize(s string, code int, colors bool) string {
+	if !colors {
+		return s
+	}
+	return fmt.Sprintf("\033[%dm%s\033[m", code, s)
+}
+
+// renderOneSided renders value as an all-insertion (insert true) or
+// all-deletion (insert false) block, one line at a time. It is used when a
+// value is present on only one side of the comparison.
+func renderOneSided(path, value string, insert, colors bool) string {
+	sign, code := "-", colorDelete
+	if insert {
+		sign, code = "+", colorInsert
+	}
+	lines := strings.Split(strings.TrimSuffix(value, "\n"), "\n")
+	if len(lines) == 1 {
+		return fmt.Sprintf("%s: %s\n", path, colorize(sign+lines[0], code, colors))
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%s:\n", path)
+	for _, line := range lines {
+		fmt.Fprintf(&sb, "%s\n", colorize(sign+line, code, colors))
+	}
+	return sb.String()
 }
 
 // renderDiff returns a line-by-line diff of x and y, using ANSI colors if enabled.
@@ -114,17 +175,9 @@ func renderDiff(x, y string, colors bool) string {
 		for _, edit := range hunk.Edits {
 			switch edit.Op {
 			case diff.Delete:
-				if colors {
-					fmt.Fprintf(&sb, "\033[31m-%s\033[m\n", edit.X)
-				} else {
-					fmt.Fprintf(&sb, "-%s\n", edit.X)
-				}
+				fmt.Fprintf(&sb, "%s\n", colorize("-"+edit.X, colorDelete, colors))
 			case diff.Insert:
-				if colors {
-					fmt.Fprintf(&sb, "\033[32m+%s\033[m\n", edit.Y)
-				} else {
-					fmt.Fprintf(&sb, "+%s\n", edit.Y)
-				}
+				fmt.Fprintf(&sb, "%s\n", colorize("+"+edit.Y, colorInsert, colors))
 			case diff.Match:
 				fmt.Fprintf(&sb, " %s\n", edit.X)
 			}
