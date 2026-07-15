@@ -104,20 +104,20 @@ func TestReporterOutput(t *testing.T) {
 		{
 			name: "byte slice renders as text",
 			x:    []byte("hello world"), y: []byte("hello WORLD"),
-			want: `{[]uint8}: -"hello world" +"hello WORLD"` + "\n",
+			want: `{[]byte}: -"hello world" +"hello WORLD"` + "\n",
 		},
 		{
 			// A length difference still reports a single text diff, not one
 			// entry per trailing byte.
 			name: "byte slice length difference",
 			x:    []byte("abc"), y: []byte("abcd"),
-			want: `{[]uint8}: -"abc" +"abcd"` + "\n",
+			want: `{[]byte}: -"abc" +"abcd"` + "\n",
 		},
 		{
 			name: "multi-line byte slice diffs line-by-line",
 			x:    []byte("a\nb\nc"), y: []byte("a\nB\nc"),
 			want: lines(
-				"{[]uint8}:",
+				"{[]byte}:",
 				" a",
 				"-b",
 				"+B",

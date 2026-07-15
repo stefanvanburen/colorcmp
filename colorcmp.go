@@ -162,12 +162,21 @@ func pathString(steps cmp.Path, vx, vy reflect.Value) string {
 	}
 	switch {
 	case vx.IsValid():
-		return fmt.Sprintf("{%v}", vx.Type())
+		return fmt.Sprintf("{%s}", typeName(vx.Type()))
 	case vy.IsValid():
-		return fmt.Sprintf("{%v}", vy.Type())
+		return fmt.Sprintf("{%s}", typeName(vy.Type()))
 	default:
 		return "{}"
 	}
+}
+
+// typeName renders t for display, preferring the byte alias over uint8 for a
+// plain []byte, which reflect otherwise reports as []uint8.
+func typeName(t reflect.Type) string {
+	if t.Kind() == reflect.Slice && t.Name() == "" && t.Elem() == reflect.TypeFor[byte]() {
+		return "[]byte"
+	}
+	return t.String()
 }
 
 func (r *Reporter) PopStep() {
