@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/term"
@@ -31,6 +32,10 @@ type Reporter struct {
 	path   cmp.Path
 	diffs  []string
 	colors bool
+	// bytesSeen records byte-slice paths already reported. A []byte is compared
+	// element by element, so many bytes may differ within one slice; it is
+	// rendered as text once, keyed by its path here.
+	bytesSeen map[string]bool
 }
 
 // New returns a Reporter that uses ANSI colors if w is connected to a terminal.
@@ -69,8 +74,14 @@ func (r *Reporter) Report(rs cmp.Result) {
 	if rs.Equal() {
 		return
 	}
+	// []byte is compared byte by byte, so a differing byte would otherwise show
+	// up as its decimal value; render the whole slice as text instead.
+	if r.reportByteSlice() {
+		return
+	}
+
 	vx, vy := r.path.Last().Values()
-	path := r.pathString(vx, vy)
+	path := pathString(r.path, vx, vy)
 
 	var entry string
 	switch {
@@ -81,27 +92,68 @@ func (r *Reporter) Report(rs cmp.Result) {
 		// Value present only in x: render as a pure deletion.
 		entry = renderOneSided(path, formatValue(vx), false, r.colors)
 	default:
-		x := formatValue(vx)
-		y := formatValue(vy)
-		xs := strings.TrimSuffix(x, "\n")
-		ys := strings.TrimSuffix(y, "\n")
-		if !strings.Contains(xs, "\n") && !strings.Contains(ys, "\n") {
-			entry = fmt.Sprintf("%s: %s %s\n", path, colorize("-"+xs, colorDelete, r.colors), colorize("+"+ys, colorInsert, r.colors))
-		} else {
-			entry = fmt.Sprintf("%s:\n%s", path, renderDiff(x, y, r.colors))
-		}
+		entry = renderChange(path, formatValue(vx), formatValue(vy), r.colors)
 	}
 	r.diffs = append(r.diffs, entry)
 }
 
-// pathString returns a human-readable path to the current node. Unlike
+// reportByteSlice handles the case where the differing node is a byte within a
+// []byte. Because cmp compares such slices element by element, it reports each
+// differing byte separately; this renders the whole slice as text once (keyed
+// by path in bytesSeen) when both sides are valid UTF-8, and reports nothing
+// handled otherwise so the caller falls back to the default byte rendering.
+func (r *Reporter) reportByteSlice() bool {
+	if _, ok := r.path.Last().(cmp.SliceIndex); !ok || len(r.path) < 2 {
+		return false
+	}
+	parent := r.path[len(r.path)-2]
+	if t := parent.Type(); t.Kind() != reflect.Slice || t.Elem().Kind() != reflect.Uint8 {
+		return false
+	}
+	px, py := parent.Values()
+	if !px.IsValid() || !py.IsValid() {
+		return false
+	}
+	bx, by := px.Bytes(), py.Bytes()
+	if !utf8.Valid(bx) || !utf8.Valid(by) {
+		return false
+	}
+
+	// The parent path drops the trailing byte index.
+	path := pathString(r.path[:len(r.path)-1], px, py)
+	if r.bytesSeen[path] {
+		return true
+	}
+	if r.bytesSeen == nil {
+		r.bytesSeen = make(map[string]bool)
+	}
+	r.bytesSeen[path] = true
+
+	x := formatValue(reflect.ValueOf(string(bx)))
+	y := formatValue(reflect.ValueOf(string(by)))
+	r.diffs = append(r.diffs, renderChange(path, x, y, r.colors))
+	return true
+}
+
+// renderChange renders a two-sided change between the formatted values x and y,
+// inline for single-line values and as a line-by-line block otherwise.
+func renderChange(path, x, y string, colors bool) string {
+	xs := strings.TrimSuffix(x, "\n")
+	ys := strings.TrimSuffix(y, "\n")
+	if !strings.Contains(xs, "\n") && !strings.Contains(ys, "\n") {
+		return fmt.Sprintf("%s: %s %s\n", path, colorize("-"+xs, colorDelete, colors), colorize("+"+ys, colorInsert, colors))
+	}
+	return fmt.Sprintf("%s:\n%s", path, renderDiff(x, y, colors))
+}
+
+// pathString returns a human-readable path to the last node in steps. Unlike
 // [cmp.Path.String], which keeps only struct field names, it includes slice
 // indices and map keys so the location of a diff is unambiguous. It falls back
 // to the node's type when the node is the root of the comparison.
-func (r *Reporter) pathString(vx, vy reflect.Value) string {
+func pathString(steps cmp.Path, vx, vy reflect.Value) string {
 	var sb strings.Builder
-	if len(r.path) > 0 {
-		for _, step := range r.path[1:] { // skip the root step, which carries only the type
+	if len(steps) > 0 {
+		for _, step := range steps[1:] { // skip the root step, which carries only the type
 			sb.WriteString(step.String())
 		}
 	}
@@ -201,6 +253,13 @@ func formatValue(v reflect.Value) string {
 	if v.Kind() == reflect.String {
 		if s := v.String(); strings.Contains(strings.TrimSuffix(s, "\n"), "\n") {
 			return s
+		}
+	}
+	// Render a []byte as its text rather than a JSON base64 blob when it is
+	// valid UTF-8, reusing the string handling above.
+	if v.Kind() == reflect.Slice && v.Type().Elem().Kind() == reflect.Uint8 {
+		if b := v.Bytes(); utf8.Valid(b) {
+			return formatValue(reflect.ValueOf(string(b)))
 		}
 	}
 	if v.CanInterface() {

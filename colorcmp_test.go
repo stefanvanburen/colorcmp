@@ -102,6 +102,36 @@ func TestReporterOutput(t *testing.T) {
 			want: "{string}: -\"abc\\n\" +\"abd\\n\"\n",
 		},
 		{
+			name: "byte slice renders as text",
+			x:    []byte("hello world"), y: []byte("hello WORLD"),
+			want: `{[]uint8}: -"hello world" +"hello WORLD"` + "\n",
+		},
+		{
+			// A length difference still reports a single text diff, not one
+			// entry per trailing byte.
+			name: "byte slice length difference",
+			x:    []byte("abc"), y: []byte("abcd"),
+			want: `{[]uint8}: -"abc" +"abcd"` + "\n",
+		},
+		{
+			name: "multi-line byte slice diffs line-by-line",
+			x:    []byte("a\nb\nc"), y: []byte("a\nB\nc"),
+			want: lines(
+				"{[]uint8}:",
+				" a",
+				"-b",
+				"+B",
+				" c",
+			),
+		},
+		{
+			// Non-UTF-8 bytes cannot be shown as text, so fall back to the
+			// default element-wise rendering.
+			name: "non-utf8 byte slice falls back to bytes",
+			x:    []byte{0xff, 0x01}, y: []byte{0xff, 0x02},
+			want: "[1]: -1 +2\n",
+		},
+		{
 			name: "struct field",
 			x:    Address{City: "New York"}, y: Address{City: "Boston"},
 			want: `City: -"New York" +"Boston"` + "\n",
