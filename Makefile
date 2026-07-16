@@ -26,10 +26,9 @@ demo: .github/demo-light.gif .github/demo-dark.gif
 .github/demo.cast: .github/demo.sh $(wildcard *.go)
 	asciinema rec --headless --overwrite --window-size 58x16 -c "sh .github/demo.sh" $@
 
-# Recreate the demo gifs and open them in Safari.
+# Recreate the demo gifs and preview them (animated) with Quick Look.
 open-demo: demo
-	open .github/demo-light.gif -a Safari.app
-	open .github/demo-dark.gif -a Safari.app
+	qlmanage -p .github/demo-light.gif .github/demo-dark.gif >/dev/null 2>&1
 
 # Remove a target if its recipe fails, so a partial gif or cast isn't left
 # behind looking up to date.
