@@ -19,10 +19,8 @@ AGG = agg --font-family "Go Mono" --font-size 24
 demo: .github/demo-light.gif .github/demo-dark.gif
 
 # Render each gif from the recorded session (see .github/demo.sh) with a theme.
-.github/demo-light.gif: .github/demo.cast
-	$(AGG) --theme github-light $< $@
-.github/demo-dark.gif: .github/demo.cast
-	$(AGG) --theme github-dark $< $@
+.github/demo-%.gif: .github/demo.cast
+	$(AGG) --theme github-$* $< $@
 
 # Record the terminal session that the demo gifs are rendered from.
 .github/demo.cast: .github/demo.sh $(wildcard *.go)
@@ -32,5 +30,9 @@ demo: .github/demo-light.gif .github/demo-dark.gif
 open-demo: demo
 	open .github/demo-light.gif -a Safari.app
 	open .github/demo-dark.gif -a Safari.app
+
+# Remove a target if its recipe fails, so a partial gif or cast isn't left
+# behind looking up to date.
+.DELETE_ON_ERROR:
 
 .PHONY: default test lint check demo open-demo
