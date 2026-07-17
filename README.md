@@ -11,7 +11,7 @@ A [`cmp.Reporter`](https://pkg.go.dev/github.com/google/go-cmp/cmp#Reporter) tha
 ## Installation
 
 ```console
-$ go get github.com/stefanvanburen/colorcmp
+$ go get go.vanburen.xyz/colorcmp
 ```
 
 ## Usage

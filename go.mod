@@ -1,4 +1,4 @@
-module github.com/stefanvanburen/colorcmp
+module go.vanburen.xyz/colorcmp
 
 go 1.25.0
 

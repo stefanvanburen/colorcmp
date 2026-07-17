@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/stefanvanburen/colorcmp"
+	"go.vanburen.xyz/colorcmp"
 )
 
 type Address struct {
