@@ -5,9 +5,10 @@ default: check
 test:
 	go test -race ./...
 
-# Run go vet.
+# Run go vet and check for available modernizations.
 lint:
 	go vet ./...
+	go fix -diff ./...
 
 # Run lint and test.
 check: lint test
