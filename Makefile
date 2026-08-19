@@ -9,6 +9,7 @@ test:
 lint:
 	go vet ./...
 	go fix -diff ./...
+	test -z "$$(gofmt -l .)" || (echo "gofmt needed on:"; gofmt -l .; exit 1)
 
 # Run lint and test.
 check: lint test
