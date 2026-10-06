@@ -63,3 +63,4 @@ Multi-line values (structs formatted as JSON, multi-line strings, and UTF-8 `[]b
 |---|---|
 | [`NO_COLOR`](https://no-color.org) | Disables color output |
 | [`FORCE_COLOR`](https://force-color.org) | Forces color output |
+| `TERM` | When the writer has no file descriptor (e.g. `t.Output()`), enables color unless unset or `dumb` |

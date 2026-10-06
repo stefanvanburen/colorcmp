@@ -40,6 +40,12 @@ func (s Server) Equal(other Server) bool { return s == other }
 // formatValue, where a value cannot be JSON-marshaled and %#v is used instead.
 type unexported struct{ n int }
 
+// opaque has an Equal method and only unexported fields, so go-cmp compares it
+// as a leaf whose JSON encoding is the same ("{}") whatever its contents.
+type opaque struct{ n int }
+
+func (o opaque) Equal(other opaque) bool { return o == other }
+
 // lines joins its arguments with newlines and appends a trailing newline,
 // keeping multi-line expectations (with embedded tabs) readable.
 func lines(ls ...string) string {
@@ -102,6 +108,23 @@ func TestReporterOutput(t *testing.T) {
 			want: "{string}: -\"abc\\n\" +\"abd\\n\"\n",
 		},
 		{
+			// The line-by-line diff can't show a trailing newline, so values
+			// that differ only there are shown quoted.
+			name: "multi-line string differing in trailing newline",
+			x:    "a\nb", y: "a\nb\n",
+			want: "{string}: -\"a\\nb\" +\"a\\nb\\n\"\n",
+		},
+		{
+			// Both sides render raw, so the shared first line matches.
+			name: "multi-line string versus single-line string",
+			x:    "a\nb", y: "a",
+			want: lines(
+				"{string}:",
+				" a",
+				"-b",
+			),
+		},
+		{
 			name: "byte slice renders as text",
 			x:    []byte("hello world"), y: []byte("hello WORLD"),
 			want: `{[]byte}: -"hello world" +"hello WORLD"` + "\n",
@@ -123,6 +146,11 @@ func TestReporterOutput(t *testing.T) {
 				"+B",
 				" c",
 			),
+		},
+		{
+			name: "multi-line byte slice differing in trailing newline",
+			x:    []byte("a\nb"), y: []byte("a\nb\n"),
+			want: "{[]byte}: -\"a\\nb\" +\"a\\nb\\n\"\n",
 		},
 		{
 			// Non-UTF-8 bytes cannot be shown as text, so fall back to the
@@ -178,6 +206,11 @@ func TestReporterOutput(t *testing.T) {
 			x:    unexported{n: 1}, y: unexported{n: 2},
 			opts: []cmp.Option{cmp.AllowUnexported(unexported{})},
 			want: "n: -1 +2\n",
+		},
+		{
+			name: "leaf with identical JSON falls back to %#v",
+			x:    opaque{n: 1}, y: opaque{n: 2},
+			want: "{colorcmp_test.opaque}: -colorcmp_test.opaque{n:1} +colorcmp_test.opaque{n:2}\n",
 		},
 		{
 			name: "multi-line leaf",

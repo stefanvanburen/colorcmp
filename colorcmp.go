@@ -39,7 +39,9 @@ type Reporter struct {
 }
 
 // New returns a Reporter that uses ANSI colors if w is connected to a terminal.
-// It respects the NO_COLOR and FORCE_COLOR environment variables.
+// When w doesn't expose a file descriptor, as with [testing.T.Output], it uses
+// colors if the TERM environment variable is set and isn't "dumb". NO_COLOR and
+// FORCE_COLOR override both checks.
 func New(w io.Writer) *Reporter {
 	return &Reporter{colors: isTTY(w)}
 }
@@ -92,7 +94,8 @@ func (r *Reporter) Report(rs cmp.Result) {
 		// Value present only in x: render as a pure deletion.
 		entry = renderOneSided(path, formatValue(vx), false, r.colors)
 	default:
-		entry = renderChange(path, formatValue(vx), formatValue(vy), r.colors)
+		x, y := formatPair(vx, vy)
+		entry = renderChange(path, x, y, r.colors)
 	}
 	r.diffs = append(r.diffs, entry)
 }
@@ -129,8 +132,7 @@ func (r *Reporter) reportByteSlice() bool {
 	}
 	r.bytesSeen[path] = true
 
-	x := formatValue(reflect.ValueOf(string(bx)))
-	y := formatValue(reflect.ValueOf(string(by)))
+	x, y := formatPair(reflect.ValueOf(string(bx)), reflect.ValueOf(string(by)))
 	r.diffs = append(r.diffs, renderChange(path, x, y, r.colors))
 	return true
 }
@@ -247,6 +249,42 @@ func renderDiff(x, y string, colors bool) string {
 	return sb.String()
 }
 
+// formatPair formats the two sides of a change. When both are text and either
+// spans multiple lines, both are rendered raw so the line-by-line diff compares
+// like with like. When the formatted sides would render identically, such as
+// structs whose JSON omits the unexported fields that differ, or text that
+// differs only in a trailing newline, both are formatted with %#v instead.
+func formatPair(vx, vy reflect.Value) (x, y string) {
+	tx, okx := text(vx)
+	ty, oky := text(vy)
+	if okx && oky && (isMultiLine(tx) || isMultiLine(ty)) {
+		x, y = tx, ty
+	} else {
+		x, y = formatValue(vx), formatValue(vy)
+	}
+	if strings.TrimSuffix(x, "\n") == strings.TrimSuffix(y, "\n") {
+		return fmt.Sprintf("%#v\n", vx), fmt.Sprintf("%#v\n", vy)
+	}
+	return x, y
+}
+
+// text returns the contents of a string or a valid UTF-8 []byte.
+func text(v reflect.Value) (string, bool) {
+	switch {
+	case v.Kind() == reflect.String:
+		return v.String(), true
+	case v.Kind() == reflect.Slice && v.Type().Elem().Kind() == reflect.Uint8 && utf8.Valid(v.Bytes()):
+		return string(v.Bytes()), true
+	}
+	return "", false
+}
+
+// isMultiLine reports whether s spans more than one line. A lone trailing
+// newline doesn't make a string multi-line.
+func isMultiLine(s string) bool {
+	return strings.Contains(strings.TrimSuffix(s, "\n"), "\n")
+}
+
 // formatValue formats a reflect.Value as a string for diffing. It encodes values as JSON so that
 // complex types (structs, slices, maps) produce multi-line output that diffs well line-by-line.
 // HTML escaping is disabled so that characters like <, >, and & appear literally rather than as
@@ -257,12 +295,9 @@ func formatValue(v reflect.Value) string {
 		return "<invalid>\n"
 	}
 	// Multi-line strings diff far better line-by-line than as a single quoted,
-	// escaped blob, so render them raw and let the block diff handle them. A
-	// lone trailing newline doesn't make a string multi-line.
-	if v.Kind() == reflect.String {
-		if s := v.String(); strings.Contains(strings.TrimSuffix(s, "\n"), "\n") {
-			return s
-		}
+	// escaped blob, so render them raw and let the block diff handle them.
+	if v.Kind() == reflect.String && isMultiLine(v.String()) {
+		return v.String()
 	}
 	// Render a []byte as its text rather than a JSON base64 blob when it is
 	// valid UTF-8, reusing the string handling above.
