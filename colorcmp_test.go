@@ -281,7 +281,7 @@ func TestReporterColors(t *testing.T) {
 	}
 }
 
-// TestReporterDemo drives the demo GIFs (see .github/demo-base.tape). It logs a
+// TestReporterDemo drives the demo GIFs (see .github/demo.sh). It logs a
 // realistic colored diff so the recording shows indexed paths and a multi-line
 // block diff. Using t.Output means color follows the recording terminal.
 func TestReporterDemo(t *testing.T) {
