@@ -311,6 +311,16 @@ func TestReporterDemo(t *testing.T) {
 	t.Log("\n" + r.String())
 }
 
+func TestReporterReuse(t *testing.T) {
+	var r colorcmp.Reporter
+	cmp.Equal([]byte("a"), []byte("b"), cmp.Reporter(&r))
+	cmp.Equal([]byte("c"), []byte("d"), cmp.Reporter(&r))
+	want := `{[]byte}: -"a" +"b"` + "\n" + `{[]byte}: -"c" +"d"` + "\n"
+	if got := r.String(); got != want {
+		t.Errorf("diff mismatch\n got: %q\nwant: %q", got, want)
+	}
+}
+
 func TestEqual(t *testing.T) {
 	x := "hello"
 	y := "hello"

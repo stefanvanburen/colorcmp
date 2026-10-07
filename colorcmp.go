@@ -69,6 +69,9 @@ func isTTY(w io.Writer) bool {
 }
 
 func (r *Reporter) PushStep(ps cmp.PathStep) {
+	if len(r.path) == 0 {
+		r.bytesSeen = nil // a new comparison starts
+	}
 	r.path = append(r.path, ps)
 }
 
