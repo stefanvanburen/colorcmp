@@ -68,6 +68,7 @@ func isTTY(w io.Writer) bool {
 	return t != "" && t != "dumb"
 }
 
+// PushStep implements [cmp.Reporter].
 func (r *Reporter) PushStep(ps cmp.PathStep) {
 	if len(r.path) == 0 {
 		r.bytesSeen = nil // a new comparison starts
@@ -75,6 +76,7 @@ func (r *Reporter) PushStep(ps cmp.PathStep) {
 	r.path = append(r.path, ps)
 }
 
+// Report implements [cmp.Reporter].
 func (r *Reporter) Report(rs cmp.Result) {
 	if rs.Equal() {
 		return
@@ -184,6 +186,7 @@ func typeName(t reflect.Type) string {
 	return t.String()
 }
 
+// PopStep implements [cmp.Reporter].
 func (r *Reporter) PopStep() {
 	r.path = r.path[:len(r.path)-1]
 }
